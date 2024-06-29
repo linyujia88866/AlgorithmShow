@@ -35,6 +35,7 @@ class DemoChartBarSeries(QDialog):
         self.temp = []
         self.min = []
         self.init_arr = []
+        self.init_arr_copy = []
         self.count = 0
         # 设置窗口标题
         self.setWindowTitle('排序算法柱状图演示')
@@ -49,6 +50,7 @@ class DemoChartBarSeries(QDialog):
         self.bar_set_0 = QBarSet('排序前')
 
         self.init_arr = gen_random()
+        self.init_arr_copy = copy.deepcopy(self.init_arr)
         self.bar_set_0.append(self.init_arr)
 
         # 条状图
@@ -90,25 +92,45 @@ class DemoChartBarSeries(QDialog):
         self.bubble_btn = QPushButton("冒泡排序")
         self.insert_btn = QPushButton("插入排序")
         self.select_btn = QPushButton("选择排序")
-        self.temp_btn = QPushButton("缓冲区")
-        self.temp_btn.setStyleSheet("background-color: red;")
+        self.shell_btn = QPushButton("希尔排序")
+        self.merge_btn = QPushButton()
+
+        self.init_btn()
+
+        # self.temp_btn = QPushButton("缓冲区")
+        # self.temp_btn.setStyleSheet("background-color: red;")
         self.make_data = QPushButton("生成待排序数据")
         self.make_data.clicked.connect(self.init_data)
         self.lay.addWidget(self.make_data, 0, 0, 1, 1)
         self.lay.addWidget(self.bubble_btn, 0, 1, 1, 1)
         self.lay.addWidget(self.insert_btn, 0, 2, 1, 1)
         self.lay.addWidget(self.select_btn, 0, 3, 1, 1)
+        self.lay.addWidget(self.shell_btn, 1, 0, 1, 1)
+        self.lay.addWidget(self.merge_btn, 1, 1, 1, 1)
         # self.lay.addWidget(self.temp_btn, 0, 4, 1, 1)
-        self.bubble_btn.clicked.connect(lambda: self.start_sort("bubble"))
-        self.insert_btn.clicked.connect(lambda: self.start_sort("insert"))
-        self.select_btn.clicked.connect(lambda: self.start_sort("select"))
-        self.lay.addWidget(self.chart_view, 1, 0, 1, 4)
+
+        self.btn_link()
+
+        self.lay.addWidget(self.chart_view, 2, 0, 1, 4)
         self.timer = QTimer(self)
 
         self.timer.timeout.connect(self.reset)
 
         # self.setCentralWidget(self.chart_view)
         # sleep(2)
+    def init_btn(self):
+        self.bubble_btn.setText("冒泡排序")
+        self.insert_btn.setText("插入排序")
+        self.select_btn.setText("选择排序")
+        self.shell_btn.setText("希尔排序")
+        self.merge_btn.setText("归并排序")
+
+    def btn_link(self):
+        self.bubble_btn.clicked.connect(lambda: self.start_sort("bubble"))
+        self.insert_btn.clicked.connect(lambda: self.start_sort("insert"))
+        self.select_btn.clicked.connect(lambda: self.start_sort("select"))
+        self.shell_btn.clicked.connect(lambda: self.start_sort("shell"))
+        self.merge_btn.clicked.connect(lambda: self.start_sort("merge"))
 
     def selection_sort(self, arr_init):
         arr = copy.deepcopy(arr_init)
@@ -154,6 +176,54 @@ class DemoChartBarSeries(QDialog):
                     self.data.append(copy.deepcopy(arr))
         return arr
 
+    def merge_sort(self, arr, start):
+        # arr = copy.deepcopy(arr_init)
+        # self.data.append(copy.deepcopy(arr))
+        if len(arr) <= 1:
+            return arr
+        mid = len(arr) // 2
+        left = arr[:mid]
+        right = arr[mid:]
+        start1 = start
+        start2 = mid + start
+        self.merge_sort(left, start1)
+        self.merge_sort(right, start2)
+        i, j = 0, 0
+        result = []
+        while i < len(left) and j < len(right):
+            if left[i] < right[j]:
+                result.append(left[i])
+                i += 1
+            else:
+                result.append(right[j])
+                j += 1
+        result += left[i:]
+        result += right[j:]
+        arr[:] = result
+        self.init_arr_copy[start: start + len(arr)] = result
+        self.data.append(copy.deepcopy(self.init_arr_copy))
+        return arr
+
+    def shell_sort(self, arr_init):
+        arr = copy.deepcopy(arr_init)
+        # 初始化增量序列
+        n = len(arr)
+        self.data.append(copy.deepcopy(arr))
+        gap = n // 2
+        while gap > 0:
+            # 对每个增量进行插入排序
+            for i in range(gap, n):
+                temp = arr[i]
+                j = i
+                while j >= gap and arr[j - gap] > temp:
+                    arr[j] = arr[j - gap]
+                    self.data.append(copy.deepcopy(arr))
+                    j -= gap
+                arr[j] = temp
+                self.data.append(copy.deepcopy(arr))
+            # 减小增量
+            gap //= 2
+
     def insertion_sort(self, arr_init):
         arr = copy.deepcopy(arr_init)
         n = len(arr)
@@ -184,9 +254,16 @@ class DemoChartBarSeries(QDialog):
         if text == "insert":
             self.insertion_sort(self.init_arr)
             self.insert_btn.setText("正在排序")
+
+        elif text == "merge":
+            res = self.merge_sort(self.init_arr, 0)
+            self.merge_btn.setText("正在排序")
         elif text == "select":
             self.selection_sort(self.init_arr)
             self.select_btn.setText("正在排序")
+        elif text == "shell":
+            self.shell_sort(self.init_arr)
+            self.shell_btn.setText("正在排序")
         else:
             self.bubble_sort(self.init_arr)
             self.bubble_btn.setText("正在排序")
@@ -201,17 +278,15 @@ class DemoChartBarSeries(QDialog):
             bar_set.append(self.data[self.count])
             if self.temp:
                 self.chart.setTitle("当前正在插入的数字是" + str(self.temp[self.count]))
-                self.temp_btn.setText(str(self.temp[self.count]))
+                # self.temp_btn.setText(str(self.temp[self.count]))
                 # self.temp_btn.setText()
             if self.min:
                 self.chart.setTitle("待排序部分发现的最小值是" + str(self.min[self.count]))
-                self.temp_btn.setText(str(self.min[self.count]))
+                # self.temp_btn.setText(str(self.min[self.count]))
             self.bar_series.clear()
             self.bar_series.append(bar_set)
         else:
-            self.bubble_btn.setText("冒泡排序")
-            self.insert_btn.setText("插入排序")
-            self.select_btn.setText("选择排序")
+            self.init_btn()
             self.count = 0
             self.timer.stop()
             # self.bubble_btn.setEnabled(False)
